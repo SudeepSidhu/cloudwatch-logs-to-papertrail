@@ -32,3 +32,8 @@ variable "parse_log_levels" {
   description = "If true, the log entries will be parsed for markers describing their log level, see README.md in repo for details"
   default     = "false"
 }
+
+variable "log_levels_regex" {
+  description = "The regex to parse out the log levels. We use the first capture group."
+  default     = "/^[^\\t]+\\t[^\\t]+\\t(\\w+):/"
+}

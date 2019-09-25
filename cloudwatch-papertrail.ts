@@ -39,38 +39,31 @@ interface LogData {
 }
 
 function getEnvVarOrFail(varName: string): string {
-  const value = process.env[varName]
+  const value = process.env[varName];
   if (!value) {
     throw new Error(`Required environment variable ${varName} is undefined`)
   }
   return value
 }
 
-// Should match winston simple log format for example: "error: The database has exploded"
-// For more information see https://github.com/winstonjs/winston
-// The pattern represents the following:
-// A sequence of non-tab chars at the start of input followed by a tab
-// Another sequence of non-tabs followed by a tab
-// Capture a group of alphanumeric chars leading up to a ':'
-const logLevelRegex = /^[^\t]+\t[^\t]+\t(\w+):/
+const logLevelRegex = new RegExp(getEnvVarOrFail('LOG_LEVEL_REGEX'));
 
 export function parseLogLevel(tsvMessage: string): string | null {
-  // Messages logged manually are tab separated value strings of three columns:
-  // date string (ISO8601), request ID, log message
-  const match = logLevelRegex.exec(tsvMessage)
-  return match && match[1].toLowerCase()
+  const match = logLevelRegex.exec(tsvMessage);
+
+  return match && match[0].toLowerCase();
 }
 
 export const handler: AwsLambda.Handler = (event: CloudwatchLogGroupsEvent, context, callback) => {
-  const host = getEnvVarOrFail('PAPERTRAIL_HOST')
-  const port = getEnvVarOrFail('PAPERTRAIL_PORT')
-  const shouldParseLogLevels = getEnvVarOrFail('PARSE_LOG_LEVELS') === "true"
+  const host = getEnvVarOrFail('PAPERTRAIL_HOST');
+  const port = getEnvVarOrFail('PAPERTRAIL_PORT');
+  const shouldParseLogLevels = getEnvVarOrFail('PARSE_LOG_LEVELS') === "true";
   const payload = new Buffer(event.awslogs.data, 'base64');
 
   unarchiveLogData(payload)
     .then((logData: LogData) => {
-      console.log("Got log data")
-      console.log(logData)
+      console.log("Got log data");
+      console.log(logData);
 
       const papertrailTransport = new winston.transports.Papertrail({
         host,
@@ -79,20 +72,22 @@ export const handler: AwsLambda.Handler = (event: CloudwatchLogGroupsEvent, cont
         hostname: logData.logGroup,
         flushOnClose: true,
         colorize: true,
-      })
+        level: 'debug'
+      });
 
       const logger = new (winston.Logger)({
-        transports: [papertrailTransport]
+        transports: [papertrailTransport],
       });
 
       logData.logEvents.forEach(function (event) {
         const logLevel = shouldParseLogLevels
           ? parseLogLevel(event.message) || 'info'
-          : 'info'
+          : 'info';
+
         logger.log(logLevel, event.message);
       });
 
-      logger.close()
+      logger.close();
       return callback!(null);
     })
     .catch(callback!)
