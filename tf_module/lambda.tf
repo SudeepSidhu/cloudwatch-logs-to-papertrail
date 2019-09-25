@@ -2,14 +2,14 @@ locals {
   lambda_zip_file = "${path.module}/cloudwatch-papertrail-lambda.zip"
 }
 
-resource "aws_lambda_permission" "allow_cloudwatch" {
+resource "aws_lambda_permission" "invoke_from_cloudwatch" {
   statement_id  = "AllowExecutionFromCloudWatch"
   action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.papertrail.function_name
+  function_name = aws_lambda_function.main.function_name
   principal     = "logs.amazonaws.com"
 }
 
-resource "aws_lambda_function" "papertrail" {
+resource "aws_lambda_function" "main" {
   filename      = local.lambda_zip_file
   function_name = "${var.lambda_name_prefix}-papertrail-lambda"
   handler       = "cloudwatch-papertrail.handler"
